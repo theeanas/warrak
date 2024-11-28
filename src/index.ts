@@ -1,10 +1,18 @@
 import Fastify from 'fastify'
 import view from '@fastify/view'
 import path from 'path'
+import { bookRoutes } from './routes/books'
+import prisma from './plugins/prisma'
 
 const fastify = Fastify({
   logger: true
 })
+
+// Register plugins
+fastify.register(prisma)
+
+// Register routes
+fastify.register(bookRoutes, { prefix: '/books' } )
 
 // Register template engine
 fastify.register(view, {
