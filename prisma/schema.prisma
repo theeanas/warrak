@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Book {
+  id          Int           @id @default(autoincrement())
+  gutenbergId String        @unique
+  title       String
+  description String?       @db.Text
+  language    String
+  author      String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  chunks      BookChunk[]   // Relation to chunks
+}
+
+model BookChunk {
+  id        Int      @id @default(autoincrement())
+  bookId    Int      // Foreign key to Book
+  text      String   @db.Text
+  order     Int      // Chunk order in the book
+  book      Book     @relation(fields: [bookId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([bookId, order])  // Ensure unique ordering per book
+  @@index([bookId])          // Index for faster queries
+}
