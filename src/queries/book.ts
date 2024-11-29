@@ -15,9 +15,15 @@ export const BookRepository = {
   async findByGutenbergId(prisma: PrismaClient, gutenbergId: string) {
     return prisma.book.findUnique({
       where: { gutenbergId },
-      include: { chunks: true }
+      include: { chunks: false }
     })
   },
+
+  async findByGutenbergIdWithChunks(prisma: PrismaClient, gutenbergId: string, page: number) {
+    return prisma.bookChunk.findFirst({
+      where: { book: { gutenbergId }, order: page }
+    })
+  }, 
 
   async findAll(prisma: PrismaClient) {
     return prisma.book.findMany({

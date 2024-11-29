@@ -1,37 +1,65 @@
-import { FastifyInstance } from 'fastify'
+import { FastifyInstance, FastifyRequest } from 'fastify'
 import { BookRepository } from '../queries/book'
-    import { BookChunkRepository } from '../queries/book_chunk'
+import { BookChunkRepository } from '../queries/book_chunk'
+import { fetchGutenbergBookMetadata, parseGutenbergBookAndSaveChunks, parseGutenbergBookMetadata } from '../services/gutenberg'
 
 export async function bookRoutes(fastify: FastifyInstance) {
   // Get all books
-  fastify.get('/books', async (request) => {
+  fastify.get('', async (request) => {
     return BookRepository.findAll(request.server.prisma)
   })
 
   // Get book by Gutenberg ID
-  fastify.get('/books/:gutenbergId', async (request, reply) => {
+  fastify.get('/:gutenbergId', async (request, reply) => {
     const { gutenbergId } = request.params as { gutenbergId: string }
-    const book = await BookRepository.findByGutenbergId(request.server.prisma, gutenbergId)
+    // make 2 concurrent requests, one to our db and the other to gutenberg.org
+    const [bookInDb, bookInGutenberg] = await Promise.all([    
+      BookRepository.findByGutenbergId(request.server.prisma, gutenbergId),
+      fetchGutenbergBookMetadata(gutenbergId)
+    ])
     
-    if (!book) {
+    if (!bookInDb && bookInGutenberg.status !== 200) {
       return reply.code(404).send({ error: 'Book not found' })
     }
-    
-    return book
+    else if (!bookInDb) {
+      // save book in our db
+      const metadata = await parseGutenbergBookMetadata(bookInGutenberg.html)
+      const book = await BookRepository.create(request.server.prisma, {
+        gutenbergId,
+        title: metadata.title,
+        author: metadata.author,
+        language: metadata.language,
+        description: metadata.description   
+      })
+      // Todo: This is slow and could be async, but we'd ensure it succeeds
+      console.time('parseGutenbergBookAndSaveChunks')
+      await parseGutenbergBookAndSaveChunks(book)
+      console.timeEnd('parseGutenbergBookAndSaveChunks')
+    }
+    return bookInDb || bookInGutenberg
   })
 
-  // Create new book with chunks
-  fastify.post('/books', async (request, reply) => {
-    const { book, chunks } = request.body as any
-    
-    const exists = await BookRepository.exists(request, book.gutenbergId)
-    if (exists) {
-      return reply.code(409).send({ error: 'Book already exists' })
+  // pages are like chunks
+  // take a query param for page
+  fastify.get('/:gutenbergId/book-content', { 
+    schema: {
+      querystring: {
+        type: 'object',
+        properties: {
+          page: { type: 'number' }
+        }
+      }
     }
+  }, async (request: FastifyRequest<{
+    Querystring: { page: number }
+  }>, reply) => {
+    const { gutenbergId } = request.params as { gutenbergId: string }
+    const { page } = request.query
 
-    const newBook = await BookRepository.create(request.server.prisma, book)
-    await BookChunkRepository.createMany(request.server.prisma, newBook.id, chunks)
-
-    return newBook
+    const chunk = await BookRepository.findByGutenbergIdWithChunks(request.server.prisma, gutenbergId, page)
+    if (!chunk) {
+      return reply.code(404).send({ error: 'page not found' })
+    }
+    return reply.send(chunk)
   })
 }

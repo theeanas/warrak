@@ -11,7 +11,7 @@ interface GutenbergMetadata {
   imageUrl?: string;
 }
 
-export async function parseGutenbergMetadata(html: string): Promise<GutenbergMetadata> {
+export async function parseGutenbergBookMetadata(html: string): Promise<GutenbergMetadata> {
   const $ = cheerio.load(html);
   
   // Extract basic metadata
@@ -40,10 +40,6 @@ export async function fetchGutenbergBookMetadata(bookId: string) {
     status: metadataResponse.status,
     html: metadataHtml
   };
-}
-
-export async function parseGutenbergBookMetadata(metadataHtml: string) {
-  return parseGutenbergMetadata(metadataHtml)
 }
 
 export async function fetchGutenbergBookContent(bookId: string) {
