@@ -1,0 +1,44 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title Book Explorer
+    script(src="https://cdn.tailwindcss.com")
+  body.bg-gray-50
+    .container.mx-auto.px-4.py-12.max-w-3xl
+      .text-center.mb-12
+        h1.text-4xl.font-bold.text-gray-800.mb-4 Welcome to Sarj Book Explorer
+        p.text-gray-600.text-lg 
+          | Enter a 
+          a.text-blue-500(href="https://www.gutenberg.org") Gutenberg
+          |  book ID to start reading
+      
+      .bg-white.rounded-lg.shadow-md.p-8
+        form.space-y-4(onsubmit="searchBook(event)")
+          .flex.flex-col.space-y-2
+            label.text-gray-700.font-medium(for="bookId") Gutenberg Book ID:
+            input#bookId.border.rounded-md(
+              class="px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              type="text"
+              placeholder="Enter book ID (e.g. 1342 for Pride and Prejudice)"
+              required
+            )
+          button(
+            type="submit"
+            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+          ) Search Book
+
+    script.
+      async function searchBook(e) {
+        e.preventDefault();
+        const bookId = document.getElementById('bookId').value.trim();
+        try {
+          const response = await fetch(`/api/books/${bookId}`);
+          if (!response.ok) throw new Error('Book not found');
+          const book = await response.json();
+          window.location.href = `/api/books/${bookId}/read`;
+        } catch (error) {
+          alert('Book not found. Please try another ID.');
+        }
+      }

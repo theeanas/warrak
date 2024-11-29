@@ -58,7 +58,7 @@ fastify.register(view, {
 
 // Basic route
 fastify.get('/', async (request, reply) => {
-    return reply.send({message: 'Welcome to Project Sarj Books.'})
+    return reply.view('index.pug')
 })
 
 // Start the server

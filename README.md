@@ -14,8 +14,9 @@
 ### Book metadata
 - I am lazyliy assuming books metadata don't change, so if a book exists in our DB, I don't bother to fetch/update it from Gutenberg.
 
-Todo:
-
+### Decisions
+- Maybe should've stored books on a storage bucket (S3), but I'm lazy.
+- I am not using a queue for the book chunks processing, but I should.
 
 Things I am skipping:
 - Tests
