@@ -19,8 +19,8 @@ export const BookRepository = {
     })
   },
 
-  async findByGutenbergIdWithChunks(prisma: PrismaClient, gutenbergId: string, page: number) {
-    return prisma.bookChunk.findFirst({
+  async findChunksByGutenbergId(prisma: PrismaClient, gutenbergId: string, page: number = 1) {
+    return prisma.bookChunk.findMany({
       where: { book: { gutenbergId }, order: page }
     })
   }, 
