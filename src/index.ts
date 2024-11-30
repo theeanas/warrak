@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import Fastify from 'fastify'
 import view from '@fastify/view'
 import path from 'path'
