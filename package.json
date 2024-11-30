@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "setup": "npm install && npm run db:generate",
     "build": "rm -rf ./dist && tsc",
     "start": "npm run build && tsx dist/index.js",
     "dev": "tsx watch src/index.ts",
