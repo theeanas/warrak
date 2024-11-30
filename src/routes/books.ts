@@ -18,19 +18,20 @@ export async function bookRoutes(fastify: FastifyInstance) {
       BookRepository.findByGutenbergId(request.server.prisma, gutenbergId),
       fetchGutenbergBookMetadata(gutenbergId)
     ])
-    
+    let book
     if (!bookInDb && bookInGutenberg.status !== 200) {
       return reply.code(404).send({ error: 'Book not found' })
     }
     else if (!bookInDb) {
       // save book in our db
       const metadata = await parseGutenbergBookMetadata(bookInGutenberg.html)
-      const book = await BookRepository.create(request.server.prisma, {
+      book = await BookRepository.create(request.server.prisma, {
         gutenbergId,
         title: metadata.title,
         author: metadata.author,
         language: metadata.language,
-        description: metadata.description   
+        description: metadata.description,
+        imageUrl: metadata.imageUrl
       })
       // Todo: This is slow and could be async, but we'd ensure it succeeds
       console.time('parseGutenbergBookAndSaveChunks')
@@ -39,6 +40,7 @@ export async function bookRoutes(fastify: FastifyInstance) {
       // TODO: await summarizeBookForLLM(book.id)
       console.timeEnd('parseGutenbergBookAndSaveChunks')
     }
+    // return book
     return bookInDb || bookInGutenberg
   })
 

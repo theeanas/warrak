@@ -15,19 +15,18 @@ export async function parseGutenbergBookMetadata(html: string): Promise<Gutenber
   const $ = cheerio.load(html);
   
   // Extract basic metadata
+  const imageUrl = $('#cover .cover-art').attr('src');
   const title = $('.bibrec tr:has(th:contains("Title")) td').text().trim();
   const author = $('.bibrec tr:has(th:contains("Author")) td a').first().text().trim();
   const language = $('.bibrec tr:has(th:contains("Language")) td').text().trim();
   const description = $('.bibrec tr:has(th:contains("Summary")) td').text().trim();
-  // TODO: parsing the image URL is not working ... maybe.
-  const imageUrl = $('#cover img.cover-art').attr('src');
-
+  
   return {
     title,
     author,
     description,
     language,
-    imageUrl: imageUrl || undefined
+    imageUrl
   };
 }
 
@@ -46,12 +45,15 @@ export async function fetchGutenbergBookContent(bookId: string) {
   const contentUrl = `https://www.gutenberg.org/files/${bookId}/${bookId}-0.txt`;
   const contentResponse = await fetch(contentUrl);
   const content = await contentResponse.text();
-  return {content}; // Encapsulate in an object to have it returned by reference; it's a book ... a lot of bytes!
+  return {content, status: contentResponse.status}; // Encapsulate in an object to have it returned by reference; it's a book ... a lot of bytes!
 }
 
 export async function parseGutenbergBookAndSaveChunks(book: any) {
   try {
-    const { content } = await fetchGutenbergBookContent(book.gutenbergId)
+    const { content, status } = await fetchGutenbergBookContent(book.gutenbergId)
+    if (status !== 200) {
+      throw new Error(`Failed to fetch book content for ${book.gutenbergId}: ${status}`)
+    }
 
     const chunkSize = 26000; // characters per chunk, refer to the README for the why.
 
@@ -81,7 +83,7 @@ export async function parseGutenbergBookAndSaveChunks(book: any) {
     const chunkData = chunks.map((text, index) => ({
       bookId: book.id,
       text,
-      order: index,
+      order: index + 1,
     }));
 
     await prisma.bookChunk.createMany({

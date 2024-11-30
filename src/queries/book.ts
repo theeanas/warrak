@@ -8,6 +8,7 @@ export const BookRepository = {
     description?: string
     language: string
     author: string
+    imageUrl?: string
   }) {
     return prisma.book.create({ data })
   },
