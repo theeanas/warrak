@@ -48,7 +48,7 @@ export async function fetchGutenbergBookContent(bookId: string) {
   return {content, status: contentResponse.status}; // Encapsulate in an object to have it returned by reference; it's a book ... a lot of bytes!
 }
 
-export async function parseGutenbergBookAndSaveChunks(book: any) {
+export async function parseGutenbergBookToChunks(book: any) {
   try {
     const { content, status } = await fetchGutenbergBookContent(book.gutenbergId)
     if (status !== 200) {
@@ -80,16 +80,12 @@ export async function parseGutenbergBookAndSaveChunks(book: any) {
       chunks.push(currentChunk.trim());
     }
 
-    const chunkData = chunks.map((text, index) => ({
+    return chunks.map((text, index) => ({
       bookId: book.id,
       text,
       order: index + 1,
     }));
 
-    await prisma.bookChunk.createMany({
-      data: chunkData,
-    });
-    return book;
   } catch (error) {
     console.error(`Error chunking and saving book content ${book.gutenbergId}:`, error);
      throw error;

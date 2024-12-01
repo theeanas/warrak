@@ -20,9 +20,11 @@ export const BookRepository = {
     })
   },
 
-  async findChunksByGutenbergId(prisma: PrismaClient, gutenbergId: string, page: number = 1) {
+  async findChunksByGutenbergId(prisma: PrismaClient, gutenbergId: string, page: number = -1) {
     return prisma.bookChunk.findMany({
-      where: { book: { gutenbergId }, order: page }
+      // if page is -1, return all chunks
+      where: { book: { gutenbergId }, order: page === -1 ? undefined : page },
+      orderBy: { order: 'asc' }
     })
   }, 
 

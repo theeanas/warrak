@@ -28,13 +28,13 @@ export class GroqService {
       content: 'You are a helpful assistant that only discusses books related topics.'
     };
 
-    // TODO: enable streaming, like most web clients do.
     try {
       const response = await axios.post<GroqResponse>(
         this.baseUrl,
         {
           model: 'llama3-8b-8192',
           messages: [systemMessage, ...messages],
+          // stream: true,
         },
         {
           headers: {
