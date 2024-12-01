@@ -85,6 +85,8 @@ async function streamAnalysis(
   gutenbergId: string, 
   analyzeFunction: (text: string) => Promise<any>
 ) {
+  let headersSent = false;
+  
   try {
     const bookSummary = await BookSummaryForAnalysisRepository.findByGutenbergId(request.server.prisma, gutenbergId)
     let summary: string;
@@ -95,7 +97,7 @@ async function streamAnalysis(
       }
 
       // Note: This won't work for long books, as summaries themselves will be long.
-      const summaries = await Promise.all(bookChunks.map(chunk => groq.generatePlotSummary(chunk.text)))
+      const summaries = await Promise.all(bookChunks.map(chunk => groq.generateChunkSummary(chunk.text)))
       summary = summaries.join('\n')
 
       BookSummaryForAnalysisRepository.insertSummaryForBook(request.server.prisma, gutenbergId, summary)
@@ -104,6 +106,7 @@ async function streamAnalysis(
       summary = bookSummary.summary
     }
     
+    headersSent = true;
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -134,7 +137,7 @@ async function streamAnalysis(
             if (content) {
               buffer += content;
               if (content.match(/[.!?]$/) || buffer.length > 80) {
-                reply.raw.write(buffer + '\n\n');
+                reply.raw.write(buffer + '');
                 buffer = '';
               }
             }
@@ -152,13 +155,15 @@ async function streamAnalysis(
       reply.raw.end();
     });
 
-    stream.on('error', (error: any) => {
-      console.error('Stream error:', error);
-      reply.raw.end();
-    });
 
   } catch (error) {
     console.error(error);
-    reply.code(500).send({ error: 'Analysis failed' });
+    const errorMessage = 'analysis failed! Probably because of rate limiting on our LLM provider. Please try again in a minute. Sorry we are poor!'
+    if (!headersSent) {
+      reply.code(500).send({ error: errorMessage });
+    } else {
+      reply.raw.write(`Whoopsie: ${errorMessage}\n\n`);
+      reply.raw.end();
+    }
   }
 }

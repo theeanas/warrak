@@ -21,37 +21,50 @@ export class GroqService {
     this.apiKey = apiKey;
   }
 
-  private async makeRequest(messages: GroqMessage[]): Promise<ReadableStream> {
-    // To make it boring. Sorry!
+  private async makeBaseRequest<T>(messages: GroqMessage[], streaming: boolean): Promise<T> {
     const systemMessage: GroqMessage = {
       role: 'system',
+      // To make it boring. Sorry!
       content: 'You are a helpful assistant that only discusses books related topics.'
     };
 
     try {
-      const response = await axios.post<ReadableStream>(
+      const response = await axios.post<T>(
         this.baseUrl,
         {
           model: 'llama3-8b-8192',
           messages: [systemMessage, ...messages],
-          stream: true,
+          stream: streaming,
         },
         {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${this.apiKey}`,
           },
-          responseType: 'stream'
+          ...(streaming && { responseType: 'stream' })
         }
       );
       return response.data;
     } catch (error: unknown) {
       if (error instanceof Error) {
         throw new Error(`Groq API error: ${error.message}`);
-      } else {
-        throw new Error('Groq API error: unknown error');
       }
+      throw new Error('Groq API error: unknown error');
     }
+  }
+
+  private async makeRequest(messages: GroqMessage[]): Promise<ReadableStream> {
+    return this.makeBaseRequest<ReadableStream>(messages, true);
+  }
+
+  private async makeRequestNonStream(messages: GroqMessage[]): Promise<string> {
+    const response = await this.makeBaseRequest<GroqResponse>(messages, false);
+    return response.choices[0].message.content;
+  }
+
+  async generateChunkSummary(bookText: string): Promise<string> {
+    const prompt = `Provide a summary of the following part of a book, be very concise and very thorough:\n\n${bookText}`;
+    return this.makeRequestNonStream([{ role: 'user', content: prompt }]);
   }
 
   async identifyKeyCharacters(bookText: string): Promise<ReadableStream> {
@@ -65,7 +78,7 @@ export class GroqService {
   }
 
   async generatePlotSummary(bookText: string): Promise<ReadableStream> {
-    const prompt = `Please provide a concise summary of the following text, highlighting the main plot points and key events:\n\n${bookText}`;
+    const prompt = `Provide a concise summary of the following text, highlighting the main plot points and key events:\n\n${bookText}`;
     return this.makeRequest([{ role: 'user', content: prompt }]);
   }
 }

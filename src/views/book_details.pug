@@ -52,13 +52,9 @@ html(lang="en")
         // Action buttons
         div(class="mt-8 flex flex-col sm:flex-row gap-4")
           a(
-            href=`/api/books/${book.gutenbergId}/read`
+            href=`https://www.gutenberg.org/files/${book.gutenbergId}/${book.gutenbergId}-0.txt`
             class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center"
           ) Read Book
-          a(
-            href=`https://www.gutenberg.org/files/${book.gutenbergId}/${book.gutenbergId}-0.txt`
-            class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
-          ) Download Book
 
         // Analysis options
         div(class="mt-12")
@@ -99,9 +95,33 @@ html(lang="en")
 
       script.
         async function analyzeText(analysisType, bookId) {
-          const resultDiv = document.getElementById(`${analysisType}-result`);
-          resultDiv.innerHTML = '<div class="animate-pulse h-4 bg-gray-200 rounded w-3/4"></div>';
-          resultDiv.classList.remove('hidden');
+          // Get or create results container
+          let resultsContainer = document.getElementById('analysis-results');
+          if (!resultsContainer) {
+            resultsContainer = document.createElement('div');
+            resultsContainer.id = 'analysis-results';
+            resultsContainer.className = 'mt-8 space-y-6';  // Add vertical spacing between results
+            document.querySelector('.mt-12').appendChild(resultsContainer);
+          }
+
+          // Create new analysis container
+          const analysisContainer = document.createElement('div');
+          analysisContainer.className = 'border rounded-lg p-6';
+          analysisContainer.id = `${analysisType}-result`;
+
+          // Add title
+          const title = document.createElement('h3');
+          title.className = 'text-xl font-semibold mb-4';
+          title.textContent = `${analysisType.charAt(0).toUpperCase() + analysisType.slice(1)}`;
+          analysisContainer.appendChild(title);
+
+          // Add content div
+          const content = document.createElement('div');
+          content.className = 'text-gray-700 whitespace-pre-wrap';
+          analysisContainer.appendChild(content);
+
+          // Prepend to results container
+          resultsContainer.insertBefore(analysisContainer, resultsContainer.firstChild);
 
           try {
             const response = await fetch(`/api/books/${bookId}/analyze/${analysisType}`);
@@ -117,17 +137,11 @@ html(lang="en")
               
               const chunk = decoder.decode(value, { stream: true });
               result += chunk;
-              
-              // Update the UI with the latest chunk
-              resultDiv.innerHTML = `
-                <div class="bg-gray-50 rounded p-4 text-gray-700 whitespace-pre-wrap">
-                  ${result}
-                </div>
-              `;
+              content.textContent = result;
             }
           } catch (error) {
-            resultDiv.innerHTML = `
-              <div class="bg-red-50 text-red-600 p-4 rounded">
+            content.innerHTML = `
+              <div class="text-red-600">
                 Analysis failed. Please try again.
               </div>
             `;
@@ -135,6 +149,16 @@ html(lang="en")
           }
         }
 
-        async function downloadBook() {
-          window.location.href = `https://www.gutenberg.org/files/${book.gutenbergId}/${book.gutenbergId}-0.txt`;
+        async function downloadBook(event, gutenbergId, title) {
+          event.preventDefault();
+          const response = await fetch(`https://www.gutenberg.org/files/${gutenbergId}/${gutenbergId}-0.txt`);
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${title}.txt`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
         }
