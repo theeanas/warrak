@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "setup": "npm install && npm run db:generate",
-    "build": "rm -rf ./dist && tsc",
+    "build": "rm -rf ./dist && tsc && cp -r src/views dist/views",
     "start": "npm run build && tsx dist/index.js",
     "dev": "tsx watch src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
