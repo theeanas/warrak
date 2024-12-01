@@ -42,8 +42,7 @@ html(lang="en")
           try {
             const response = await fetch(`/api/books/${bookId}`);
             if (!response.ok) throw new Error('Book not found');
-            const book = await response.json();
-            window.location.href = `/api/books/${bookId}/read`;
+            window.location.href = `/books/${bookId}`;
           } catch (error) {
             alert('Book not found. Please try another ID.');
           }
@@ -67,9 +66,9 @@ html(lang="en")
                     <p class="text-gray-600 text-sm mb-2">By ${book.author || 'Unknown'}</p>
                     <p class="text-gray-500 text-sm mb-4 line-clamp-3">${book.description}</p>
                     <div class="flex justify-between items-center">
-                      <span class="text-gray-600 text-sm">Gutenberg ID: ${book.gutenbergId}</span>
-                      <a class="text-blue-600 hover:text-blue-800 font-medium" href="/api/books/${book.gutenbergId}/read">
-                        Read Now →
+                      <span class="text-gray-600 text-sm">ID: ${book.gutenbergId}</span>
+                      <a class="text-blue-600 hover:text-blue-800 font-medium" href="/books/${book.gutenbergId}">
+                        View Book →
                       </a>
                     </div>
                   </div>

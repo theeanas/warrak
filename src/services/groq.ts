@@ -21,7 +21,7 @@ export class GroqService {
     this.apiKey = apiKey;
   }
 
-  private async makeRequest(messages: GroqMessage[]): Promise<string> {
+  private async makeRequest(messages: GroqMessage[]): Promise<ReadableStream> {
     // To make it boring. Sorry!
     const systemMessage: GroqMessage = {
       role: 'system',
@@ -29,21 +29,22 @@ export class GroqService {
     };
 
     try {
-      const response = await axios.post<GroqResponse>(
+      const response = await axios.post<ReadableStream>(
         this.baseUrl,
         {
           model: 'llama3-8b-8192',
           messages: [systemMessage, ...messages],
-          // stream: true,
+          stream: true,
         },
         {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${this.apiKey}`,
           },
+          responseType: 'stream'
         }
       );
-      return response.data.choices[0].message.content;
+      return response.data;
     } catch (error: unknown) {
       if (error instanceof Error) {
         throw new Error(`Groq API error: ${error.message}`);
@@ -53,17 +54,17 @@ export class GroqService {
     }
   }
 
-  async identifyKeyCharacters(bookText: string): Promise<string> {
+  async identifyKeyCharacters(bookText: string): Promise<ReadableStream> {
     const prompt = `Analyze the following text and identify the key characters. For each character, provide their name, personality concisely, and a very brief description of their role in the story:\n\n${bookText}`;
     return this.makeRequest([{ role: 'user', content: prompt }]);
   }
 
-  async detectLanguage(bookText: string): Promise<string> {
+  async detectLanguage(bookText: string): Promise<ReadableStream> {
     const prompt = `Analyze the following text and identify the language it's written in. If possible, also mention any distinct linguistic features or dialects:\n\n${bookText}`;
     return this.makeRequest([{ role: 'user', content: prompt }]);
   }
 
-  async generatePlotSummary(bookText: string): Promise<string> {
+  async generatePlotSummary(bookText: string): Promise<ReadableStream> {
     const prompt = `Please provide a concise summary of the following text, highlighting the main plot points and key events:\n\n${bookText}`;
     return this.makeRequest([{ role: 'user', content: prompt }]);
   }

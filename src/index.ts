@@ -6,6 +6,7 @@ import { bookRoutes } from './routes/books'
 import prisma from './plugins/prisma'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
+import uiRoutes from './routes/ui'
 
 const fastify = Fastify({
   logger: true
@@ -44,6 +45,7 @@ fastify.register(swaggerUi, {
 fastify.register(prisma)
 
 // Register routes
+fastify.register(uiRoutes)
 fastify.register(bookRoutes, { prefix: 'api/books', tags: ['books'] } )
 
 // Register template engine
@@ -55,11 +57,6 @@ fastify.register(view, {
   defaultContext: {
     title: 'Project Sarj Books'
   }
-})
-
-// Basic route
-fastify.get('/', async (request, reply) => {
-    return reply.view('index.pug')
 })
 
 // Start the server

@@ -83,9 +83,8 @@ async function streamAnalysis(
   request: FastifyRequest,
   reply: FastifyReply,
   gutenbergId: string, 
-  analyzeFunction: (text: string) => Promise<string>
+  analyzeFunction: (text: string) => Promise<any>  // Changed return type
 ) {
-
   try {
     const bookSummary = await BookSummaryForAnalysisRepository.findByGutenbergId(request.server.prisma, gutenbergId)
     let summary: string;
@@ -95,7 +94,7 @@ async function streamAnalysis(
         return reply.code(404).send({ error: 'Book content not found, please fetch the book first' })
       }
 
-      // Note: This won't work for long books, as summaries themselves may be long.
+      // Note: This won't work for long books, as summaries themselves will be long.
       const summaries = await Promise.all(bookChunks.map(chunk => groq.generatePlotSummary(chunk.text)))
       summary = summaries.join('\n')
 
@@ -105,10 +104,54 @@ async function streamAnalysis(
       summary = bookSummary.summary
     }
     
-    // just reply normally, no streaming
-    reply.send({ content: await analyzeFunction(summary) })
+    // set the headers for streaming
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
+    });
+
+    const stream = await analyzeFunction(summary);
+    
+    // Handle Node.js readable stream
+    let buffer = '';
+    stream.on('data', (chunk: Buffer) => {
+      const data = chunk.toString();
+      try {
+        const messages = data.split('\n\n');
+        for (const message of messages) {
+          if (message.trim()) {
+            const jsonStr = message.replace(/^data:\s*/, '');
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices[0].delta.content;
+            if (content) {
+              buffer += content;
+              if (content.match(/[.!?]$/) || buffer.length > 80) {
+                reply.raw.write(buffer + '\n\n');
+                buffer = '';
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing chunk:', e);
+      }
+    });
+
+    stream.on('end', () => {
+      if (buffer) {
+        reply.raw.write(buffer + '\n\n');
+      }
+      reply.raw.end();
+    });
+
+    stream.on('error', (error: any) => {
+      console.error('Stream error:', error);
+      reply.raw.end();
+    });
+
   } catch (error) {
-    console.error(error) // usually it's rate limit exceeded ... free tier XD.
-    reply.code(500).send({ error: 'Analysis failed' })
+    console.error(error);
+    reply.code(500).send({ error: 'Analysis failed, please try again within 1 minute' });
   }
 }

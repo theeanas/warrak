@@ -1,0 +1,140 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title #{book.title} - Book Explorer
+    script(src="https://cdn.tailwindcss.com")
+  
+  body(class="bg-gray-50")
+    div(class="container mx-auto px-4 py-12 max-w-4xl")
+      // Back button
+      a(
+        href="/"
+        class="inline-flex items-center text-blue-600 mb-8 hover:text-blue-800"
+      )
+        svg(
+          class="w-5 h-5 mr-2"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        )
+          path(
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M10 19l-7-7m0 0l7-7m-7 7h18"
+          )
+        | Back to Search
+
+      div(class="bg-white rounded-lg shadow-md p-8")
+        div(class="flex flex-col md:flex-row gap-8")
+          // Book cover
+          if book.imageUrl
+            img(
+              src=book.imageUrl
+              alt=book.title
+              class="w-full md:w-64 h-auto object-cover rounded-lg"
+            )
+          
+          // Book details
+          div(class="flex-1")
+            h1(class="text-3xl font-bold text-gray-800 mb-4")= book.title
+            div(class="space-y-4")
+              p(class="text-gray-700")
+                span.font-semibold Author: 
+                | #{book.author}
+              p(class="text-gray-700")
+                span.font-semibold Language: 
+                | #{book.language}
+              p(class="text-gray-700 mt-4")= book.description
+
+        // Action buttons
+        div(class="mt-8 flex flex-col sm:flex-row gap-4")
+          a(
+            href=`/api/books/${book.gutenbergId}/read`
+            class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-center"
+          ) Read Book
+          a(
+            href=`https://www.gutenberg.org/files/${book.gutenbergId}/${book.gutenbergId}-0.txt`
+            class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          ) Download Book
+
+        // Analysis options
+        div(class="mt-12")
+          h2(class="text-2xl font-bold text-gray-800 mb-6") Available Analyses
+          div(class="grid gap-6 md:grid-cols-2")
+            // Character Analysis
+            div(class="border rounded-lg p-6 hover:shadow-lg transition-shadow")
+              h3(class="text-xl font-semibold mb-3") Character Analysis
+              p(class="text-gray-600 mb-4") Identify key characters and their relationships in the book.
+              button(
+                class="text-blue-600 hover:text-blue-800"
+                onclick=`analyzeText('characters', '${book.gutenbergId}')`
+              ) Run Analysis →
+              div(id="characters-result" class="mt-4 hidden")
+                div(class="animate-pulse h-4 bg-gray-200 rounded w-3/4")
+
+            // Language Analysis
+            div(class="border rounded-lg p-6 hover:shadow-lg transition-shadow")
+              h3(class="text-xl font-semibold mb-3") Language Analysis
+              p(class="text-gray-600 mb-4") Detect and analyze the language patterns used in the text.
+              button(
+                class="text-blue-600 hover:text-blue-800"
+                onclick=`analyzeText('language', '${book.gutenbergId}')`
+              ) Run Analysis →
+              div(id="language-result" class="mt-4 hidden")
+                div(class="animate-pulse h-4 bg-gray-200 rounded w-3/4")
+
+            // Plot Summary
+            div(class="border rounded-lg p-6 hover:shadow-lg transition-shadow")
+              h3(class="text-xl font-semibold mb-3") Plot Summary
+              p(class="text-gray-600 mb-4") Generate a comprehensive summary of the book's plot.
+              button(
+                class="text-blue-600 hover:text-blue-800"
+                onclick=`analyzeText('summary', '${book.gutenbergId}')`
+              ) Generate Summary →
+              div(id="summary-result" class="mt-4 hidden")
+                div(class="animate-pulse h-4 bg-gray-200 rounded w-3/4")
+
+      script.
+        async function analyzeText(analysisType, bookId) {
+          const resultDiv = document.getElementById(`${analysisType}-result`);
+          resultDiv.innerHTML = '<div class="animate-pulse h-4 bg-gray-200 rounded w-3/4"></div>';
+          resultDiv.classList.remove('hidden');
+
+          try {
+            const response = await fetch(`/api/books/${bookId}/analyze/${analysisType}`);
+            if (!response.ok) throw new Error('Analysis failed');
+            
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let result = '';
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              
+              const chunk = decoder.decode(value, { stream: true });
+              result += chunk;
+              
+              // Update the UI with the latest chunk
+              resultDiv.innerHTML = `
+                <div class="bg-gray-50 rounded p-4 text-gray-700 whitespace-pre-wrap">
+                  ${result}
+                </div>
+              `;
+            }
+          } catch (error) {
+            resultDiv.innerHTML = `
+              <div class="bg-red-50 text-red-600 p-4 rounded">
+                Analysis failed. Please try again.
+              </div>
+            `;
+            console.error(error);
+          }
+        }
+
+        async function downloadBook() {
+          window.location.href = `https://www.gutenberg.org/files/${book.gutenbergId}/${book.gutenbergId}-0.txt`;
+        }
