@@ -83,7 +83,7 @@ async function streamAnalysis(
   request: FastifyRequest,
   reply: FastifyReply,
   gutenbergId: string, 
-  analyzeFunction: (text: string) => Promise<any>  // Changed return type
+  analyzeFunction: (text: string) => Promise<any>
 ) {
   try {
     const bookSummary = await BookSummaryForAnalysisRepository.findByGutenbergId(request.server.prisma, gutenbergId)
@@ -104,7 +104,6 @@ async function streamAnalysis(
       summary = bookSummary.summary
     }
     
-    // set the headers for streaming
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -113,15 +112,23 @@ async function streamAnalysis(
 
     const stream = await analyzeFunction(summary);
     
-    // Handle Node.js readable stream
     let buffer = '';
+    let messageBuffer = '';
+
     stream.on('data', (chunk: Buffer) => {
-      const data = chunk.toString();
-      try {
-        const messages = data.split('\n\n');
-        for (const message of messages) {
-          if (message.trim()) {
-            const jsonStr = message.replace(/^data:\s*/, '');
+      messageBuffer += chunk.toString();
+      
+      if (!messageBuffer.includes('\n')) return;
+      
+      const lines = messageBuffer.split('\n');
+      messageBuffer = lines.pop() || '';  // Keep the incomplete line
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const jsonStr = line.slice(6);
+            if (jsonStr === '[DONE]') continue;
+            
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices[0].delta.content;
             if (content) {
@@ -131,10 +138,10 @@ async function streamAnalysis(
                 buffer = '';
               }
             }
+          } catch (e) {
+            // Ignore parsing errors for incomplete chunks
           }
         }
-      } catch (e) {
-        console.error('Error parsing chunk:', e);
       }
     });
 
@@ -152,6 +159,6 @@ async function streamAnalysis(
 
   } catch (error) {
     console.error(error);
-    reply.code(500).send({ error: 'Analysis failed, please try again within 1 minute' });
+    reply.code(500).send({ error: 'Analysis failed' });
   }
 }
