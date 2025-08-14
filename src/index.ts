@@ -9,7 +9,7 @@ import swaggerUi from '@fastify/swagger-ui'
 import uiRoutes from './routes/ui'
 
 const fastify = Fastify({
-  logger: true
+  logger: false
 })
 
 // Register Swagger
