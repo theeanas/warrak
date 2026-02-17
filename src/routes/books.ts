@@ -11,6 +11,10 @@ export async function bookRoutes(fastify: FastifyInstance) {
     return BookRepository.findAll(request.server.prisma)
   })
 
+  fastify.get('allllll', async (request) => {
+    return BookRepository.findAll(request.server.prisma)
+  })
+
   // Get book by Gutenberg ID
   fastify.get('/:gutenbergId', async (request, reply) => {
     const { gutenbergId } = request.params as { gutenbergId: string }

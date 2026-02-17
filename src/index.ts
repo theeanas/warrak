@@ -62,7 +62,7 @@ fastify.register(view, {
 // Start the server
 const start = async () => {
   try {
-    const port = Number(process.env.PORT) || 5050
+    const port = Number(process.env.PORT) || 5054
     const host = process.env.FASTIFY_ADDRESS || '0.0.0.0'
     await fastify.listen({ port, host })
     console.log(`Server running at http://${host}:${port}`)
